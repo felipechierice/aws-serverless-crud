@@ -1,0 +1,107 @@
+service: dynamodb-crud-api
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  stage: dev
+  region: sa-east-1
+  environment:
+    DYNAMODB_USERS_TABLE: ${self:custom.usersTableName}
+
+custom:
+  usersTableName: users-table-${self:provider.stage}
+
+plugins:
+  - serverless-iam-roles-per-function
+
+functions:
+  scanUsers:
+    handler: src/Handlers/scan-users.handle
+    name: scan-users
+    memorySize: 128
+    timeout: 5
+    events:
+      - http:
+          path: users
+          method: GET
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "dynamodb:Scan"
+        Resource: !GetAtt UsersTable.Arn
+
+  getUser:
+    handler: src/Handlers/get-user.handle
+    name: get-user
+    memorySize: 128
+    timeout: 5
+    events:
+      - http:
+          path: users/{userId}
+          method: GET
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "dynamodb:GetItem"
+        Resource: !GetAtt UsersTable.Arn
+
+  createUser:
+    handler: src/Handlers/create-user.handle
+    name: create-user
+    memorySize: 128
+    timeout: 5
+    events:
+      - http:
+          path: users
+          method: POST
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "dynamodb:PutItem"
+        Resource: !GetAtt UsersTable.Arn
+
+  updateUser:
+    handler: src/Handlers/update-user.handle
+    name: update-user
+    memorySize: 128
+    timeout: 5
+    events:
+      - http:
+          path: users/{userId}
+          method: PATCH
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "dynamodb:UpdateItem"
+        Resource: !GetAtt UsersTable.Arn
+
+  deleteUser:
+    handler: src/Handlers/delete-user.handle
+    name: delete-user
+    memorySize: 128
+    timeout: 5
+    events:
+      - http:
+          path: users/{userId}
+          method: DELETE
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "dynamodb:DeleteItem"
+        Resource: !GetAtt UsersTable.Arn
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.usersTableName}
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
